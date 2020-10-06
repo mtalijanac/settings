@@ -20,7 +20,7 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
     @Getter boolean singleton = false;
     @Getter Class objectType;
 
-    @Setter SettingsDao settingsDao;
+    @Setter OracleSettingsDao settingsDao;
     @Setter Properties defaultOverrides;
 
     @Setter String beanName;

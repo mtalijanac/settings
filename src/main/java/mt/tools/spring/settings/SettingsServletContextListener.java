@@ -50,7 +50,7 @@ public class SettingsServletContextListener implements ServletContextListener {
 
         Map<String, Map<String, String>> allSettings = new HashMap<String, Map<String,String>>();
         for (String tablename: tables) {
-            SettingsDao dao = initDao(tablename, dataSource);
+            OracleSettingsDao dao = initDao(tablename, dataSource);
             Setting example = new Setting();
             Map<String, String> values = dao.findSimplifiedSettings(example);
             log.info("Loaded '{}' settings from table: '{}'", values.size(), tablename);
@@ -84,9 +84,9 @@ public class SettingsServletContextListener implements ServletContextListener {
         }
     }
 
-    SettingsDao initDao(String tablename, DataSource dataSource) {
+    OracleSettingsDao initDao(String tablename, DataSource dataSource) {
         NamedParameterJdbcTemplate npjt = new NamedParameterJdbcTemplate(dataSource);
-        SettingsDao settingsDao = new SettingsDao();
+        OracleSettingsDao settingsDao = new OracleSettingsDao();
         settingsDao.setJdbcTemplate(npjt);
         settingsDao.setTablename(tablename);
         return settingsDao;

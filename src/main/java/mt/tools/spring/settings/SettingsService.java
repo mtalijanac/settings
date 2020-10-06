@@ -6,7 +6,7 @@ import lombok.Setter;
 
 public class SettingsService {
 
-    @Setter SettingsDao settingsDao;
+    @Setter OracleSettingsDao settingsDao;
 
     public List<Setting> findByExample(Setting example, String jtSorting, Long jtStartIndex, Long endRow) {
         List<Setting> settings = settingsDao.findByExample(example, jtSorting, jtStartIndex, endRow);
