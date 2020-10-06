@@ -11,4 +11,5 @@ public class Setting {
     String value;
     String defaultValue;
     String description;
+
 }
