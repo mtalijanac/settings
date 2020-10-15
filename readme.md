@@ -1,24 +1,30 @@
 
-# Settings
+Settings 4 Spring
+=================
+[![Apache License 2](https://img.shields.io/badge/license-ASF2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.txt) [![GPL Licencse 3](https://img.shields.io/badge/license-GPL-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
-Settings je biblioteka za pohranu aplikativnih postavki u bazi. Ideja je zamijeniti eksternu konfiguraciju
-(properties datoteke, env. entrije i dr.) sa postavkama u bazi gdje ih mogu editirati i korisnici koji inaèe
-nemaju pristup serverima. Settings projekt ukljuèuje par razlièitnih naèina integracije takvih postavki 
-sa JEE i spring aplikacijama.
+Did you ever used about:config in Firefox or chrome://flags in Chrome and thought to yourself: "Gee, what a lovely idea. Why my app doesn't have that?"
+Well that is what this project is about. Configure your app using Spring but store your application constants in persistent external store.
 
-## Uvod
-Kreriraj SETTINGS tabelu u kojoj æe biti pohranjena konfiguracija:
+
+## Usage
+
+Start by creating db table:
+
 ```
+-- Oracle, H2 syntax:
 CREATE TABLE SETTINGS(
-    PREFERENCENAME VARCHAR2(100) NOT NULL,      -- puno ime settinga
-    VALUE VARCHAR2(100),                        -- vrijednost settinga
-    DEFAULTVALUE VARCHAR2(100),                 -- podrazumijevana vrijednost
-    TYPE VARCHAR2(50) NOT NULL,                 -- tip podatka, podržano: su Boolean [bool, boolean, java.lang.Boolean], integer [int, integer, java.lang.Integer], long [long, java.lang.Long] te string [string, java.lang.String]
+    PREFERENCENAME VARCHAR2(100) NOT NULL,      -- preference name
+    VALUE VARCHAR2(1000),                       -- current value of preferencec
+    DEFAULTVALUE VARCHAR2(1000),                -- default value
+    TYPE VARCHAR2(100) NOT NULL,                -- Datatype: Boolean [bool, boolean, java.lang.Boolean], integer [int, integer, java.lang.Integer], long [long, java.lang.Long], string [string, java.lang.String]
     STATUS VARCHAR2(50) NOT NULL,               -- status: DEFAULT | USER SET
-    DESCRIPTION VARCHAR2(500)                   -- opis propertija
+    DESCRIPTION VARCHAR2(500)                   -- preference description
 );
 ```
-Dodaj Settings jar u svoj projekt:
+
+Add settings dependency to your project:
+
 ```
 <dependency>
     <groupId>hr.ispcard.tools</groupId>
@@ -26,9 +32,11 @@ Dodaj Settings jar u svoj projekt:
     <version>1.4.3</version>
 </dependency>
 ```
-Instanciraj spring beanove za pristup konfiguraciji:
+
+Add spring beans in your context:
+
 ```
-<bean id="settingsDao" class="hr.ispcard.tools.settings.SettingsDao"
+<bean id="settingsDao" class="mt.tools.spring.settings.H2SettingsDao"
       p:tablename="SETTINGS"
       p:jdbcTemplate-ref="..." />
 
@@ -36,35 +44,39 @@ Instanciraj spring beanove za pristup konfiguraciji:
       p:description="Missing description for this propert"
       p:settingsDao-ref="settingsDao" />
 ```
-Kreiraj i koristi aplikativne postavke:
-```
-<bean id="appIn" p:type="java.lang.String" parent="settingFactoryBean"
-      p:description="Ulazni red."
-      p:defaultValue="APP_IN" />
 
-<bean id="workCounter" p:type="java.lang.Integer" parent="settingFactoryBean"
-      p:description="Number of workers."
+And you are ready to go. Use *settingsFactoryBean* to init any app preference:
+
+```
+<bean id="aStringValue" p:type="java.lang.String" parent="settingFactoryBean"
+      p:description="This is an example of a text value"
+      p:defaultValue="Example Value" />
+
+<bean id="aIntValue" p:type="java.lang.Integer" parent="settingFactoryBean"
+      p:description="And this is a integer value"
       p:defaultValue="5" />
 
-<bean id="exampleService" class="myapp.ExampleService"
-      p:destination-ref="destination"
-      p:numberOfWorkers-ref="workCounter" />
+<bean id="usageExample" class="myapp.ExampleService"
+      p:textValUsage-ref="aStringValue"
+      p:intValUsage-ref="aIntValue" />
 ```
-Naš primjer kreira dvije vrijednosti: *appIn* kao String i *workCounter* kao Integer. Beanovi se potom koriste kao obièni spring beanovi. Ali vrijednost tih beanova nije harkodirana u spring context, veæ je dinamièki uèitana od strane *settingFactoryBean*-a. SettingsFactoryBean u pridruženoj tabeli (u primjeru *SETTINGS*) traži retke sa vrijednostima za *appIn* i *workCounter* beanove. Ako pronaðe taj redak onda vrijednost iz tog retka koristi kao vrijednost za bean. Ako pak ne pronaðe taka redak, onda iz beana uzima *defaultValue* vrijednost, ubacuje primjeren redak u bazu, te tada tu vrijednost koristi za vrijednost beana.
 
-Dakle po prvom izvoðenju spring context-a iz primjera, *appIn* æe sadržavati vrijednost APP_IN, a  *workCounter* æe biti 5. Takoðer u *SETTINGS* tabelu æe biti ubaèena dva retka; po jedan za svaki bean. Po svakom iduæem pokretanju, biti æe korišteni zapisi iz SETTINGS tabele jer sada sadrži primjerene retke.
+Each variable is a normal spring bean in a app context, instantiated by SettingsFactoryBean.
+While variable is instantiated, the SettingsFactoryBean will try to match its id to a PREFERENCENAME in a table.
+If a matching row is found a value from VALUE column in table will be loaded. If a matching row was **not**
+found a row will be inserted in a table, with a VALUE column set to defaultValue property.
 
-## Odvajanje konfiguracija
 
-OBJASNI MEHANIZAM PREFIXA i odvajanje konfigracija i override konfiguracija
 
-### Odvajanje konfiguracije po okolini
+## Handling multiple configurations
 
-OBJ
+TBD
 
-```
-Give an example
-```
-## SPECIJALNI sluèajevi
+Explain prefix and override and mutliple tables and OBJASNI MEHANIZAM PREFIXA i odvajanje konfigracija i override konfiguracija
 
-Objasni uèitavanje Listi, Mapa i Set-ova.
+
+## Special cases
+
+TBD
+
+Explain how to load list, map, and set
