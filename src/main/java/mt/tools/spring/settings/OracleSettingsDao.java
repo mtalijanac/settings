@@ -12,7 +12,7 @@ import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-public class OracleSettingsDao {
+public class OracleSettingsDao implements SettingsDao {
 
     /*
             CREATE TABLE T_SETTINGS (
@@ -160,7 +160,7 @@ public class OracleSettingsDao {
         String query = qb.toString().replaceFirst(" AND ", " WHERE ");
 
         if (startRow != null && endRow != null) {
-            query = String.format("SELECT * FROM ( SELECT ROWNUM rnum, q.* FROM ( %s ) q WHERE rownum <= :endRow ) WHERE rnum >= :startRow", query);
+            query = String.format("SELECT * FROM ( SELECT ROWNUM rnum, q.* FROM ( %s ) q WHERE rownum < :endRow ) WHERE rnum >= :startRow", query);
             ps.addValue("startRow", startRow);
             ps.addValue("endRow", endRow);
         }

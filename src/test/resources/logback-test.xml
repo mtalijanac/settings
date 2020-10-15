@@ -1,0 +1,55 @@
+<configuration name="Default">
+
+
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+        <encoder>
+<!--             <pattern>%d{HH:mm:ss.SSS} %-5level [%-36logger{36} : %4line] [%-16thread] - %msg%n</pattern> -->
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%-40.-40file : %4line] [%-16thread] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+
+    <logger  name="org.apache.http" level="INFO" />
+    <logger  name="org.drools" level="INFO" />
+    <logger  name="org.quartz" level="INFO" />
+    <logger  name="org.apache.velocity" level="INFO" />
+    <logger  name="org.springframework" level="TRACE" />
+
+    <logger name="interface" additivity="false">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <logger name="performance" additivity="false">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <logger name="hr.ispcard.tools.jdbctemplate.LoggingJdbcTemplate" additivity="false" level="INFO">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <logger name="hr.ispcard.lynx.solid.SolidJdbcTemplate" additivity="false" level="INFO">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <logger name="hr.ispcard.tools.jdbctemplate.LoggingJdbcTemplate" additivity="false" level="INFO">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <logger name="hr.ispcard.lynx.solid.SolidJdbcTemplate" additivity="false" level="INFO">
+        <appender-ref ref="Console" />
+    </logger>
+
+    <logger name="org.springframework.security.authentication.event.LoggerListener" level="ALL" additivity="false">
+        <appender-ref ref="Console"/>
+    </logger>
+
+    <logger name="LeaSecurityLogger" level="ALL" additivity="false">
+        <appender-ref ref="Console"/>
+    </logger>
+
+    <root level="DEBUG">
+        <appender-ref ref="Console" />
+    </root>
+
+</configuration>
