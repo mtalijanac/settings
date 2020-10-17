@@ -1,5 +1,7 @@
 package mt.tools.spring.settings;
 
+import static org.junit.Assert.assertEquals;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -8,7 +10,6 @@ import org.h2.jdbcx.JdbcDataSource;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -57,27 +58,42 @@ public class UsageExample {
         	return dao;
         }
 
-        @Bean(name = "anExample")
-        SettingFactoryBean anExample(SettingsDao settingsDao) throws Exception {
+        SettingFactoryBean newSFB(SettingsDao settingsDao, String prefix, String preference, String type, String defaultValue, String description) {
         	SettingFactoryBean sfb = new SettingFactoryBean();
         	sfb.setSettingsDao(settingsDao);
-        	sfb.setPrefix("prefix.");
-        	sfb.setPreferenceName("AnExample");
-        	sfb.setType("string");
-        	sfb.setDefaultValue("A default value for preference");
-        	sfb.setDescription("This is an example of setting usage");
-
+        	sfb.setPrefix(prefix);
+        	sfb.setPreferenceName(preference);
+        	sfb.setType(type);
+        	sfb.setDefaultValue(defaultValue);
+        	sfb.setDescription(description);
         	return sfb;
         }
-    }
-	
 
-	@Autowired @Qualifier("anExample")
-	String value;
+        @Bean(name = "aExample")
+        SettingFactoryBean aExample(SettingsDao dao) throws Exception {
+        	return newSFB(dao, null, "aExample", "string", "A default value for preference", "This is an example of setting usage");
+        }
+
+        @Bean(name = "aByte")
+        SettingFactoryBean aByteValue(SettingsDao dao) {
+        	return newSFB(dao, null, "aByteValue", "byte", "10", "Example byte value of 10");
+        }
+    }
+
+
+	@Autowired
+	String stringExample;
+
+	@Autowired
+	Byte aByte;
 
 	@Test
-	public void usingAValue() {
-		System.out.println(value);
+	public void usingValues() {
+		String expectedString = "A default value for preference";
+		assertEquals(expectedString, stringExample);
+
+		Byte expectedByte = Byte.parseByte("10");
+		assertEquals(expectedByte, aByte);
 	}
 
 }
