@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @DirtiesContext(classMode=ClassMode.AFTER_CLASS)
 public class UsageExample {
 
-	@Configuration
+    @Configuration
     static class TestContext {
 
         @Bean
@@ -48,74 +48,74 @@ public class UsageExample {
 
         @Bean
         NamedParameterJdbcTemplate jdbcTemplate() throws SQLException {
-        	return new NamedParameterJdbcTemplate(dataSource());
+            return new NamedParameterJdbcTemplate(dataSource());
         }
 
         @Bean
         H2SettingsDao settingsDao(NamedParameterJdbcTemplate jdbcTemplate) throws SQLException {
-        	H2SettingsDao dao = new H2SettingsDao();
-        	dao.setJdbcTemplate(jdbcTemplate);
-        	dao.setTablename("TEST_SETTINGS");
-        	return dao;
+            H2SettingsDao dao = new H2SettingsDao();
+            dao.setJdbcTemplate(jdbcTemplate);
+            dao.setTablename("TEST_SETTINGS");
+            return dao;
         }
 
         SettingFactoryBean newSFB(SettingsDao settingsDao, String prefix, String preference, String type, String defaultValue, String description) {
-        	SettingFactoryBean sfb = new SettingFactoryBean();
-        	sfb.setSettingsDao(settingsDao);
-        	sfb.setPrefix(prefix);
-        	sfb.setPreferenceName(preference);
-        	sfb.setType(type);
-        	sfb.setDefaultValue(defaultValue);
-        	sfb.setDescription(description);
-        	return sfb;
+            SettingFactoryBean sfb = new SettingFactoryBean();
+            sfb.setSettingsDao(settingsDao);
+            sfb.setPrefix(prefix);
+            sfb.setPreferenceName(preference);
+            sfb.setType(type);
+            sfb.setDefaultValue(defaultValue);
+            sfb.setDescription(description);
+            return sfb;
         }
 
         @Bean(name="firstString")
         SettingFactoryBean firstString(SettingsDao dao) throws Exception {
-        	return newSFB(dao, null, "aFirstExample", "string", "First string", "This is an example of setting usage");
+            return newSFB(dao, null, "aFirstExample", "string", "First string", "This is an example of setting usage");
         }
 
         @Bean(name = "secondString")
         SettingFactoryBean secondString(SettingsDao dao) throws Exception {
-        	return newSFB(dao, null, "aSecondExample", "string", "Second string", "This is an example of setting usage");
+            return newSFB(dao, null, "aSecondExample", "string", "Second string", "This is an example of setting usage");
         }
 
         @Bean(name = "aByte")
         SettingFactoryBean aByteValue(SettingsDao dao) {
-        	return newSFB(dao, null, "aByteValue", "byte", "10", "Example byte value of 10");
+            return newSFB(dao, null, "aByteValue", "byte", "10", "Example byte value of 10");
         }
 
         @Bean
         SettingFactoryBean intValue(SettingsDao dao) {
-        	return newSFB(dao, null, "aIntValue", "int", "136", "Example int value of 136");
+            return newSFB(dao, null, "aIntValue", "int", "136", "Example int value of 136");
         }
 
     }
 
 
-	@Autowired @Qualifier("firstString")
-	String first;
+    @Autowired @Qualifier("firstString")
+    String first;
 
-	@Autowired @Qualifier("secondString")
-	String second;
+    @Autowired @Qualifier("secondString")
+    String second;
 
-	@Autowired
-	Byte aByte;
+    @Autowired
+    Byte aByte;
 
-	@Autowired
-	Integer aInt;
+    @Autowired
+    Integer aInt;
 
-	@Test
-	public void usingValues() {
-		assertEquals("First string", first);
-		assertEquals("Second string", second);
+    @Test
+    public void usingValues() {
+        assertEquals("First string", first);
+        assertEquals("Second string", second);
 
-		Byte expectedByte = (byte) 10;
-		assertEquals(expectedByte, aByte);
+        Byte expectedByte = (byte) 10;
+        assertEquals(expectedByte, aByte);
 
-		Integer expectedInt = 136;
-		assertEquals(expectedInt, aInt);
-	}
+        Integer expectedInt = 136;
+        assertEquals(expectedInt, aInt);
+    }
 
 }
 
