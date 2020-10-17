@@ -14,29 +14,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 public class OracleSettingsDao implements SettingsDao {
 
-    /*
-            CREATE TABLE T_SETTINGS (
-              PREFERENCENAME VARCHAR2(100) NOT NULL,
-              VALUE VARCHAR2(100),
-              DEFAULTVALUE VARCHAR2(100),
-              TYPE VARCHAR2(50) NOT NULL,
-              STATUS VARCHAR2(50) NOT NULL,
-              DESCRIPTION VARCHAR2(500)
-            ) TABLESPACE LYNXDB_DATA;
-
-            -- test
-            GRANT DELETE, INSERT, SELECT, UPDATE ON LYNXDBSTORE.T_SETTINGS TO LYNXDBAPP;
-            CREATE SYNONYM LYNXDBAPP.SETTINGS FOR LYNXDBSTORE.T_SETTINGS;
-
-            -- prod
-            GRANT DELETE, INSERT, SELECT, UPDATE ON LYNXDBSTORE.T_SETTINGS TO LYNXDBREAPP;
-            CREATE SYNONYM LYNXDBREAPP.T_SETTINGS FOR LYNXDBSTORE.T_SETTINGS;
-
-            GRANT DELETE, INSERT, SELECT, UPDATE ON LYNXDBSTORE.T_SETTINGS TO LYNXDBLEAAPP;
-            CREATE SYNONYM LYNXDBLEAAPP.T_SETTINGS FOR LYNXDBSTORE.T_SETTINGS;
-     */
-
-
     @Setter NamedParameterJdbcTemplate jdbcTemplate;
     @Setter String tablename = "Settings";
     @Setter SettingRowMapper settingRowMapper = new SettingRowMapper();
@@ -44,56 +21,6 @@ public class OracleSettingsDao implements SettingsDao {
     @Setter long maximumAgeInMs = 10 * 1000;
     HashMap<String, Object[]> cache = new HashMap<String, Object[]>();
     long lastPrefetchTime;
-
-    /**
-     * Interno učitavanje settingsa koje koristi prefetch cijele tabele.
-     * Ideja je da je ovakav dohvat koristan pri brzom podizanju aplikacije
-     * kroz spring context.
-     */
-    Setting findByName(String preferenceName) {
-        prefetch();
-
-        long now = System.currentTimeMillis();
-        Object[] cached = cache.get(preferenceName);
-        if (cached != null) {
-            long timeEntry = (Long) cached[0];
-            long age = now - timeEntry;
-            if (age < maximumAgeInMs) {
-                Setting cachedSetting = (Setting) cached[1];
-                return cachedSetting;
-            }
-        }
-
-        Setting example = new Setting();
-        example.setPreferenceName(preferenceName);
-
-        List<Setting> results = findByExample(example, null, null, null);
-        if (results == null || results.isEmpty()) {
-            return null;
-        }
-
-        Setting setting = results.get(0);
-        String key = setting.getPreferenceName();
-        cache.put(key, new Object[] {now, setting});
-        return setting;
-    }
-
-    synchronized void prefetch() {
-        long now = System.currentTimeMillis();
-        long prefetchAge = now - lastPrefetchTime;
-        if (prefetchAge < maximumAgeInMs) {
-            return;
-        }
-
-        Setting example = new Setting();
-        List<Setting> allSettings = findByExample(example, null, null, null);
-
-        for (Setting setting: allSettings) {
-            String preferenceName = setting.getPreferenceName();
-            cache.put(preferenceName, new Object[] {now, setting});
-        }
-        lastPrefetchTime = now;
-    }
 
     public List<Setting> findByExample(Setting example, final String orderBy, final Long startRow, final Long endRow) {
         Object[] queryAndPs = queryByExample("SELECT *", example, orderBy, startRow, endRow);
