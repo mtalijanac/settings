@@ -70,7 +70,7 @@ public class UsageExample {
             return sfb;
         }
 
-        @Bean(name="firstString")
+        @Bean(name = "firstString")
         SettingFactoryBean firstString(SettingsDao dao) throws Exception {
             return newSFB(dao, null, "aFirstExample", "string", "First string", "This is an example of setting usage");
         }
