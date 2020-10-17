@@ -1,8 +1,10 @@
 package mt.tools.spring.settings;
 
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.FactoryBean;
@@ -20,36 +22,24 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
     @Getter boolean singleton = false;
     @Getter Class objectType;
 
-    @Setter OracleSettingsDao settingsDao;
+    @Setter List<Converter<? extends Object>> converters = Converters.defaultConverters();
+    @Setter SettingsDao settingsDao;
     @Setter Properties defaultOverrides;
 
     @Setter String beanName;
     @Setter String preferenceName;
     @Setter String prefix;
-    @Setter Long cacheDurationInSec = 30l;
 
     @Setter String defaultValue;
     @Setter String type;
     @Setter String description;
 
 
-    final Map<String, Class> objectMapping = new HashMap<String, Class>(){{
-        put("bool", Boolean.class);
-        put("boolean", Boolean.class);
-        put("java.lang.boolean", Boolean.class);
 
-        put("int", Integer.class);
-        put("integer", Integer.class);
-        put("java.lang.integer", Integer.class);
-
-        put("long", Long.class);
-        put("java.lang.long", Long.class);
-
-        put("string", String.class);
-        put("java.lang.string", String.class);
-    }};
-
-
+    // properties used for cached loading of settings:
+    Map<String, Setting> cachedValues;
+    Long cachedValuesTimestamp;
+    @Setter Long cachedValuesDurationInMs = 30000L;
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -61,31 +51,76 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
             preferenceName = prefix + preferenceName;
         }
 
-        objectType = objectMapping.get(type.toLowerCase());
+        for (Converter<?> con: converters) {
+        	if (con.supports(type)) {
+        		objectType = con.getObjectType();
+        	}
+        }
+
+        if (objectType == null) {
+        	throw new IllegalStateException("Unsupported type: '" + type + "' for preferenceName: '" + preferenceName + "'");
+        }
     }
 
 
     @Override
     public Object getObject() throws Exception {
-        Setting localSetting = loadCachedSetting();
+    	Map<String, Setting> cachedSetting = cachedSetting();
+    	if (cachedSetting != null) {
+    		Setting cached = cachedSetting.get(preferenceName);
+    		if (cached != null) {
+    			return cached;
+    		}
+    	}
+
+        Setting localSetting = loadSetting();
         String value = localSetting.getValue();
         String type = localSetting.getType();
         return convert(value, type);
     }
 
-    synchronized Setting loadCachedSetting() {
-        Setting setting = settingsDao.findByName(preferenceName);
-        if (setting != null) {
-            String msg = "Loaded setting value for name: '" + preferenceName + "', loaded value: '" + setting.getValue() + "'.";
+
+    Map<String, Setting> cachedSetting() {
+    	if (cachedValuesTimestamp == null) {
+    		List<Setting> res = settingsDao.findByExample(new Setting(), null, null, null);
+    		cachedValues = res.stream().collect(Collectors.toMap(Setting::getPreferenceName, Function.identity()));
+    		cachedValuesTimestamp = System.currentTimeMillis();
+    		return cachedValues;
+    	}
+
+    	long now = System.currentTimeMillis();
+    	long expiry = cachedValuesTimestamp + cachedValuesDurationInMs;
+
+    	if (now <= expiry) {
+    		return cachedValues;
+    	}
+
+    	return null;
+    }
+
+
+    synchronized Setting loadSetting() {
+    	Setting example = new Setting();
+    	example.setPreferenceName(preferenceName);
+
+    	List<Setting> res = settingsDao.findByExample(example, null, null, null);
+    	if (res.isEmpty()) {
+    		Setting setting = storeSetting();
+    		String msg = "No setting value for name: '" + preferenceName + "'. Stored and using value: '" + setting.getValue() + "'.";
             log.info(msg);
             return setting;
-        }
+    	}
 
-        setting = storeSetting();
-        String msg = "No setting value for name: '" + preferenceName + "'. Stored and using value: '" + setting.getValue() + "'.";
+    	if (res.size() > 1) {
+    		log.error("Multiple result found for preferencename: '" + preferenceName + "'");
+    	}
+
+    	Setting setting = res.get(0);
+        String msg = "Loaded setting value for name: '" + preferenceName + "', loaded value: '" + setting.getValue() + "'.";
         log.info(msg);
         return setting;
     }
+
 
     Setting storeSetting() {
         String defValue = defaultValue;
@@ -115,20 +150,10 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
             return null;
         }
 
-        if ("bool".equalsIgnoreCase(type) || "boolean".equalsIgnoreCase(type) || "java.lang.Boolean".equalsIgnoreCase(type)) {
-            return Boolean.parseBoolean(value);
-        }
-
-        if ("int".equalsIgnoreCase(type) || "integer".equalsIgnoreCase(type) || "java.lang.Integer".equalsIgnoreCase(type)) {
-            return Integer.decode(value);
-        }
-
-        if ("long".equalsIgnoreCase(type) || "java.lang.Long".equalsIgnoreCase(type)) {
-            return Long.decode(value);
-        }
-
-        if ("string".equalsIgnoreCase(type) || "java.lang.String".equalsIgnoreCase(type)) {
-            return value;
+        for (Converter<?> con: converters) {
+        	if (con.supports(type)) {
+        		return con.toObject(value);
+        	}
         }
 
         throw new UnsupportedOperationException();

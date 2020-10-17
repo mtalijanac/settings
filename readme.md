@@ -20,6 +20,8 @@ CREATE TABLE SETTINGS(
     TYPE VARCHAR2(100) NOT NULL,                -- Datatype: Boolean [bool, boolean, java.lang.Boolean], integer [int, integer, java.lang.Integer], long [long, java.lang.Long], string [string, java.lang.String]
     STATUS VARCHAR2(50) NOT NULL,               -- status: DEFAULT | USER SET
     DESCRIPTION VARCHAR2(500)                   -- preference description
+
+    CONSTRAINT setting_pk PRIMARY KEY(PREFERENCENAME)
 );
 ```
 
