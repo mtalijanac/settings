@@ -70,15 +70,19 @@ found a row will be inserted in a table, with a VALUE column set to defaultValue
 
 
 
-## Handling multiple configurations
+## Multitenacy
 
-TBD
+TBD - Explain prefix mechanism
 
-Explain prefix and override and mutliple tables and OBJASNI MEHANIZAM PREFIXA i odvajanje konfigracija i override konfiguracija
+#### Using multiple tables
+TBD - Use multiple tables to differenate settings
+
+#### Using overrides
+TBD - Use embeded properties to override default value
 
 
 ## Special cases
 
 TBD
 
-Explain how to load list, map, and set
+Explain converters. Explain how to load list, map, and set. Write custom converter.
