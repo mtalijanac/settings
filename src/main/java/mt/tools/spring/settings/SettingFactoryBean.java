@@ -1,29 +1,38 @@
 package mt.tools.spring.settings;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.core.env.PropertySource;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.apachecommons.CommonsLog;
 
 /**
- * Spring FactoryBean used to load Setting value from db.
+ * FactoryBean used to load object to spring context. <br>
+ *
+ * If corresponding text value is found in a database, it is used to create a instance of object.
+ * If value is not present in database, a new value is added to database and than it is used to create instance of the object.
+ *
+ * @see FactoryBean
  */
 @CommonsLog
-public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean, BeanNameAware {
+public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean, BeanNameAware, EnvironmentAware {
+    @Setter Environment environment;
     @Getter boolean singleton = false;
-    @Getter Class objectType;
+    @Getter Class<?> objectType;
 
-    @Setter List<Converter<? extends Object>> converters = Converters.defaultConverters();
-    @Setter SettingsDao settingsDao;
+    @Setter SettingsService settingsService;
     @Setter Properties defaultOverrides;
 
     @Setter String beanName;
@@ -36,11 +45,6 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
 
 
 
-    // properties used for cached loading of settings:
-    Map<String, Setting> cachedValues;
-    Long cachedValuesTimestamp;
-    @Setter Long cachedValuesDurationInMs = 30000L;
-
     @Override
     public void afterPropertiesSet() throws Exception {
         if (preferenceName == null) {
@@ -51,76 +55,26 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
             preferenceName = prefix + preferenceName;
         }
 
-        for (Converter<?> con: converters) {
-        	if (con.supports(type)) {
-        		objectType = con.getObjectType();
-        	}
-        }
-
+        objectType = settingsService.typeClass(type);
         if (objectType == null) {
-        	throw new IllegalStateException("Unsupported type: '" + type + "' for preferenceName: '" + preferenceName + "'");
+            throw new IllegalStateException("Unsupported type: '" + type + "' for preferenceName: '" + preferenceName + "'");
         }
     }
-
 
     @Override
     public Object getObject() throws Exception {
-    	Map<String, Setting> cachedSetting = cachedSetting();
-    	if (cachedSetting != null) {
-    		Setting cached = cachedSetting.get(preferenceName);
-    		if (cached != null) {
-    			return cached;
-    		}
-    	}
+        Setting setting = settingsService.findCached(preferenceName);
+        if (setting == null) {
+            setting = storeSetting();
+        }
 
-        Setting localSetting = loadSetting();
-        String value = localSetting.getValue();
-        String type = localSetting.getType();
-        return convert(value, type);
+        String textValue = setting.getValue();
+        log.info("Loaded setting: '" + setting.getPreferenceName() + "' with value: '" + textValue + "'");
+        String type = setting.getType();
+        Object objectValue = settingsService.convert(textValue, type);
+        publishToEnv(preferenceName, objectValue);
+        return objectValue;
     }
-
-
-    Map<String, Setting> cachedSetting() {
-    	if (cachedValuesTimestamp == null) {
-    		List<Setting> res = settingsDao.findByExample(new Setting(), null, null, null);
-    		cachedValues = res.stream().collect(Collectors.toMap(Setting::getPreferenceName, Function.identity()));
-    		cachedValuesTimestamp = System.currentTimeMillis();
-    		return cachedValues;
-    	}
-
-    	long now = System.currentTimeMillis();
-    	long expiry = cachedValuesTimestamp + cachedValuesDurationInMs;
-
-    	if (now <= expiry) {
-    		return cachedValues;
-    	}
-
-    	return null;
-    }
-
-
-    synchronized Setting loadSetting() {
-    	Setting example = new Setting();
-    	example.setPreferenceName(preferenceName);
-
-    	List<Setting> res = settingsDao.findByExample(example, null, null, null);
-    	if (res.isEmpty()) {
-    		Setting setting = storeSetting();
-    		String msg = "No setting value for name: '" + preferenceName + "'. Stored and using value: '" + setting.getValue() + "'.";
-            log.info(msg);
-            return setting;
-    	}
-
-    	if (res.size() > 1) {
-    		log.error("Multiple result found for preferencename: '" + preferenceName + "'");
-    	}
-
-    	Setting setting = res.get(0);
-        String msg = "Loaded setting value for name: '" + preferenceName + "', loaded value: '" + setting.getValue() + "'.";
-        log.info(msg);
-        return setting;
-    }
-
 
     Setting storeSetting() {
         String defValue = defaultValue;
@@ -136,27 +90,33 @@ public class SettingFactoryBean implements FactoryBean<Object>, InitializingBean
         def.setStatus("DEFAULT");
         def.setDefaultValue(defValue);
 
-        settingsDao.createSetting(def);
+        settingsService.createSetting(def);
         return def;
     }
 
 
-    Object convert(String value, String type) {
-        if (value == null) {
-            return null;
+    void publishToEnv(String name, Object value) {
+        if (environment == null) {
+            return;
         }
 
-        if ("".equals(value)) {
-            return null;
+        if (!(environment instanceof ConfigurableEnvironment)) {
+            return;
         }
 
-        for (Converter<?> con: converters) {
-        	if (con.supports(type)) {
-        		return con.toObject(value);
-        	}
+        ConfigurableEnvironment cenv = (ConfigurableEnvironment) environment;
+        MutablePropertySources propertySources = cenv.getPropertySources();
+
+        String ps_key = "SETTINGS_PSNAME";
+        synchronized (SettingsServiceFactory.class) {
+            if (!propertySources.contains(ps_key)) {
+                propertySources.addFirst(new MapPropertySource(ps_key, new ConcurrentHashMap<>()));
+            }
         }
 
-        throw new UnsupportedOperationException();
+        PropertySource<?> ps = propertySources.get(ps_key);
+        Map<String, Object> settingMap =  (Map<String, Object>) ps.getSource();
+        settingMap.put(name, value);
     }
 
 }

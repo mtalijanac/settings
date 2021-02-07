@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -52,47 +53,42 @@ public class UsageExample {
         }
 
         @Bean
-        H2SettingsDao settingsDao(NamedParameterJdbcTemplate jdbcTemplate) throws SQLException {
-            H2SettingsDao dao = new H2SettingsDao();
-            dao.setJdbcTemplate(jdbcTemplate);
-            dao.setTablename("TEST_SETTINGS");
-            return dao;
+        SettingsServiceFactory ssFactory(NamedParameterJdbcTemplate jt) {
+            SettingsServiceFactory ssf = new SettingsServiceFactory();
+            ssf.setJdbcTemplate(jt);
+            ssf.setTablename("TEST_SETTINGS");
+            ssf.setPassword("TEST_PWD");
+            return ssf;
         }
 
-        SettingFactoryBean newSFB(SettingsDao settingsDao, String prefix, String preference, String type, String defaultValue, String description) {
-            SettingFactoryBean sfb = new SettingFactoryBean();
-            sfb.setSettingsDao(settingsDao);
-            sfb.setPrefix(prefix);
-            sfb.setPreferenceName(preference);
-            sfb.setType(type);
-            sfb.setDefaultValue(defaultValue);
-            sfb.setDescription(description);
-            return sfb;
-        }
 
         @Bean(name = "firstString")
-        SettingFactoryBean firstString(SettingsDao dao) throws Exception {
-            return newSFB(dao, null, "aFirstExample", "string", "First string", "This is an example of setting usage");
+        SettingFactoryBean firstString(SettingsService ss) throws Exception {
+            return ss.newValue("First string", "string", "This is an example of setting usage");
         }
 
         @Bean(name = "secondString")
-        SettingFactoryBean secondString(SettingsDao dao) throws Exception {
-            return newSFB(dao, null, "aSecondExample", "string", "Second string", "This is an example of setting usage");
+        SettingFactoryBean secondString(SettingsService ss) throws Exception {
+            return ss.newValue("Second string", "string", "This is an example of setting usage");
         }
 
         @Bean(name = "aByte")
-        SettingFactoryBean aByteValue(SettingsDao dao) {
-            return newSFB(dao, null, "aByteValue", "byte", "10", "Example byte value of 10");
+        SettingFactoryBean aByteValue(SettingsService ss) {
+            return ss.newValue("10", "byte", "Example byte value of 10");
         }
 
-        @Bean
-        SettingFactoryBean intValue(SettingsDao dao) {
-            return newSFB(dao, null, "aIntValue", "int", "136", "Example int value of 136");
+        @Bean(name="aInt")
+        SettingFactoryBean intValue(SettingsService ss) {
+            return ss.newValue("136", "int", "Example int value of 136");
         }
 
     }
 
 
+
+    //
+    // IOC examples:
+    //
     @Autowired @Qualifier("firstString")
     String first;
 
@@ -105,6 +101,25 @@ public class UsageExample {
     @Autowired
     Integer aInt;
 
+
+
+    //
+    // Value examples:
+    //
+    @Value("#{firstString}")
+    String firstValue;
+
+    @Value("#{secondString}")
+    String secondValue;
+
+    @Value("#{aByte}")
+    Byte aByteValue;
+
+    @Value("#{aInt}")
+    Integer aIntValue;
+
+
+
     @Test
     public void usingValues() {
         assertEquals("First string", first);
@@ -115,7 +130,13 @@ public class UsageExample {
 
         Integer expectedInt = 136;
         assertEquals(expectedInt, aInt);
+
+        assertEquals(first, firstValue);
+        assertEquals(second, secondValue);
+        assertEquals(aByte, aByteValue);
+        assertEquals(aInt, aIntValue);
     }
+
 
 }
 
